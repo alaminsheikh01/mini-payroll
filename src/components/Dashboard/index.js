@@ -5,6 +5,7 @@ import {
   TableOutlined,
   LogoutOutlined,
   AppstoreAddOutlined,
+  HomeFilled,
 } from "@ant-design/icons";
 import Swal from "sweetalert2";
 
@@ -14,6 +15,7 @@ import BulkAdd from "./BulkAdd";
 import Edit from "./Edit";
 import { db } from "../../config/firestore";
 import { collection, getDocs, doc, deleteDoc } from "firebase/firestore";
+import EmployeeDash from "./EmployeeDash";
 
 const { Sider, Content } = Layout;
 
@@ -21,7 +23,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const [employees, setEmployees] = useState([]);
   const [selectedEmployee, setSelectedEmployee] = useState(null);
   const [isAdding, setIsAdding] = useState(false);
-  const [activeTab, setActiveTab] = useState("table");
+  const [activeTab, setActiveTab] = useState("home");
   const [isEditing, setIsEditing] = useState(false);
 
   const getEmployees = async () => {
@@ -40,7 +42,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
   const handleEdit = (id) => {
     const [employee] = employees.filter((employee) => employee.id === id);
     setSelectedEmployee(employee);
-    setActiveTab("edit"); // Change to "edit" tab for rendering the Edit component
+    setActiveTab("edit");
   };
 
   const handleDelete = (id) => {
@@ -93,8 +95,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
         cancelButton: "swal-cancel-button",
       },
     }).then((result) => {
-      if (result.value) {
-        setIsAuthenticated(false);
+      if (result.isConfirmed) {
         Swal.fire({
           icon: "success",
           title: "Logged out!",
@@ -102,6 +103,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
           showConfirmButton: false,
           timer: 1500,
         });
+        setIsAuthenticated(false);
       }
     });
   };
@@ -118,15 +120,39 @@ const Dashboard = ({ setIsAuthenticated }) => {
           left: 0,
         }}
       >
+        <div
+          style={{
+            height: "64px",
+            display: "flex",
+            justifyContent: "center",
+            alignItems: "center",
+            color: "white",
+            fontSize: "16px",
+            fontWeight: "bold",
+            borderBottom: "1px solid rgba(255, 255, 255, 0.2)", // Optional separator
+            marginBottom: "16px", // Space below the content
+          }}
+        >
+          Employee Management
+        </div>
+
         <Menu
           theme="dark"
           mode="inline"
           defaultSelectedKeys={["table"]}
           onClick={({ key }) => {
-            setActiveTab(key);
-            if (key === "add") setIsAdding(true);
+            if (key === "add") {
+              setActiveTab("add");
+              setIsAdding(true);
+            } else if (key !== "login") {
+              setActiveTab(key);
+              setIsAdding(false);
+            }
           }}
         >
+          <Menu.Item key="home" icon={<HomeFilled />}>
+            Dashboard
+          </Menu.Item>
           <Menu.Item key="table" icon={<TableOutlined />}>
             Employee Table
           </Menu.Item>
@@ -137,7 +163,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
             Bulk Add
           </Menu.Item>
           <Menu.Item
-            key="logout"
+            key="login"
             icon={<LogoutOutlined />}
             onClick={handleLogout}
           >
@@ -145,10 +171,10 @@ const Dashboard = ({ setIsAuthenticated }) => {
           </Menu.Item>
         </Menu>
       </Sider>
+
       <Layout style={{ marginLeft: 200, height: "100vh", overflow: "auto" }}>
-        <Content
-          style={{ margin: "24px 16px", padding: 24}}
-        >
+        <Content style={{ margin: "24px 16px", padding: 24 }}>
+          {activeTab === "home" && <EmployeeDash />}
           {activeTab === "table" && (
             <Table
               employees={employees}
@@ -156,7 +182,7 @@ const Dashboard = ({ setIsAuthenticated }) => {
               handleEdit={handleEdit}
             />
           )}
-          {activeTab === "add" && isAdding && (
+          {activeTab === "add" && (
             <Add
               employees={employees}
               setEmployees={setEmployees}
@@ -171,16 +197,12 @@ const Dashboard = ({ setIsAuthenticated }) => {
               setEmployees={setEmployees}
               setIsEditing={setIsEditing}
               getEmployees={getEmployees}
-              setActiveTab={setActiveTab} // Pass this function
+              setActiveTab={setActiveTab}
             />
           )}
 
           {activeTab === "bulkAdd" && (
-            <BulkAdd
-              employees={employees}
-              setEmployees={setEmployees}
-              getEmployees={getEmployees}
-            />
+            <BulkAdd getEmployees={getEmployees} setActiveTab={setActiveTab} />
           )}
         </Content>
       </Layout>

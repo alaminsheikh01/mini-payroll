@@ -5,9 +5,7 @@ import { addDoc, collection } from "firebase/firestore";
 import * as XLSX from "xlsx";
 
 const BulkAdd = ({
-  employees,
-  setEmployees,
-  setIsBulkAdding,
+  setActiveTab,
   getEmployees,
 }) => {
   const [uploadedData, setUploadedData] = useState([]);
@@ -24,28 +22,22 @@ const BulkAdd = ({
       const sheet = workbook.Sheets[sheetName];
       const parsedData = XLSX.utils.sheet_to_json(sheet);
 
-      // Correct date parsing
       const formattedData = parsedData.map((row) => {
         const date = new Date(row.Date * 86400000 + Date.parse("1899-12-30"));
         return {
           ...row,
-          Date: date.toISOString().split("T")[0], // Format date to 'YYYY-MM-DD'
+          Date: date.toISOString().split("T")[0],
         };
       });
 
-      console.log("formattedData", formattedData);
       setUploadedData(formattedData);
     };
     reader.readAsArrayBuffer(file);
   };
 
-  const handleCancel = (e) => {
-    e.preventDefault();
-    setUploadedData([]);
-    setIsBulkAdding(false);
-  };
 
   const handleSave = async () => {
+  
     if (uploadedData.length === 0) {
       return Swal.fire({
         icon: "error",
@@ -54,9 +46,8 @@ const BulkAdd = ({
         showConfirmButton: true,
       });
     }
-
+  
     try {
-      // Transform data and create promises for addDoc
       const savePromises = uploadedData.map((employee) => {
         const transformedEmployee = {
           firstName: employee["First Name"],
@@ -65,15 +56,14 @@ const BulkAdd = ({
           salary: employee["Salary"],
           date: employee["Date"],
         };
-
-        // Add the transformed employee data to Firebase
+  
+        console.log("transformedEmployee", transformedEmployee);
+  
         return addDoc(collection(db, "employees"), transformedEmployee);
       });
-
-      // Wait for all addDoc promises to resolve
+  
       await Promise.all(savePromises);
-
-      // Show success alert
+  
       Swal.fire({
         icon: "success",
         title: "Success!",
@@ -81,20 +71,21 @@ const BulkAdd = ({
         showConfirmButton: false,
         timer: 1500,
       });
-
-      // Reset UI and refresh employees
-      setIsBulkAdding(false);
+  
       getEmployees();
+      setActiveTab("table");
     } catch (error) {
-      // Handle errors during the save process
+      console.error("Error during save:", error.message);
       Swal.fire({
         icon: "error",
         title: "Error!",
-        text: "An error occurred while saving the data.",
+        text: `An error occurred while saving the data: ${error.message}`,
         showConfirmButton: true,
       });
     }
   };
+  
+  
 
   return (
     <form>
@@ -102,6 +93,13 @@ const BulkAdd = ({
       <input type="file" accept=".xlsx, .xls" onChange={handleFileUpload} />
       {uploadedData.length > 0 && (
         <>
+          <button
+            type="button"
+            onClick={handleSave}
+            style={{ marginTop: "20px", marginRight: "10px" }}
+          >
+            Save
+          </button>
           <table>
             <thead>
               <tr>
@@ -120,13 +118,6 @@ const BulkAdd = ({
               ))}
             </tbody>
           </table>
-          <button
-            type="button"
-            onClick={handleSave}
-            style={{ marginTop: "20px", marginRight: "10px" }}
-          >
-            Save
-          </button>
         </>
       )}
     </form>
